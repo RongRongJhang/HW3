@@ -6,8 +6,7 @@ import numpy as np
 from scipy.io import wavfile
 import warnings
 from notes import piano_notes, note_to_name
-from sheets.options import SHEET_OPTIONS
-import importlib
+from sheets.wedding import tempo, right_score, right_beat, left_score, left_beat
 
 # 忽略 WAV 文件非數據塊警告
 warnings.filterwarnings("ignore", category=wavfile.WavFileWarning)
@@ -19,7 +18,7 @@ FPS = 60
 SAMPLE_RATE = 44100  # WAV 檔案的取樣率
 
 class PianoMusicGenerator:
-    def __init__(self, tempo, right_score, right_beat, left_score, left_beat):
+    def __init__(self):
         
         self.piano_notes = piano_notes   # 鋼琴音符名稱
         self.note_to_name = note_to_name # 音符數字到音符名稱的映射
@@ -55,12 +54,6 @@ class PianoMusicGenerator:
         self.right_volume = 0.7  # 降低音量以防止削波
         self.left_volume = 0.6
         self.max_amplitude = 32767 * 0.7  # 降低最大振幅
-        
-        # 樂譜數據
-        self.right_score = right_score
-        self.right_beat = right_beat
-        self.left_score = left_score
-        self.left_beat = left_beat
     
     def get_piano_sound(self, note_num, hand='right'):
         """根據數字音符獲取對應的 Pygame 音頻物件"""
@@ -139,12 +132,12 @@ class PianoMusicGenerator:
             if channel.get_busy():
                 channel.stop()
     
-    async def play_music(self):
+    async def play_music(self, right_score, right_beat, left_score, left_beat):
         """同時播放右手和左手部分的音樂"""
-        print("正在播放鋼琴合奏版...")
+        print("正在播放鋼琴合奏版《Wedding Dress》...")
         await asyncio.gather(
-            self.play_hand_part(self.right_score, self.right_beat, 'right'),
-            self.play_hand_part(self.left_score, self.left_beat, 'left')
+            self.play_hand_part(right_score, right_beat, 'right'),
+            self.play_hand_part(left_score, left_beat, 'left')
         )
         print("播放完成！")
     
@@ -230,7 +223,7 @@ class PianoMusicGenerator:
         
         return audio_data
     
-    async def export_to_wav(self, filename="piano_output.wav"):
+    async def export_to_wav(self, right_score, right_beat, left_score, left_beat, filename="piano_output.wav"):
         """匯出鋼琴音樂為WAV檔案，改進版本以消除爆音"""
         print("正在生成WAV檔案...")
         
@@ -239,8 +232,8 @@ class PianoMusicGenerator:
             filename += '.wav'
         
         # 生成左右手音頻數據
-        right_audio = self.generate_wav_data(self.right_score, self.right_beat, 'right')
-        left_audio = self.generate_wav_data(self.left_score, self.left_beat, 'left')
+        right_audio = self.generate_wav_data(right_score, right_beat, 'right')
+        left_audio = self.generate_wav_data(left_score, left_beat, 'left')
         
         # 確保左右手長度一致
         min_length = min(len(right_audio), len(left_audio))
@@ -273,49 +266,18 @@ class PianoMusicGenerator:
         wavfile.write(filename, SAMPLE_RATE, mixed_audio)
         print(f"已成功匯出WAV檔案: {filename}")
     
-    async def play_and_export(self, filename="piano_output.wav"):
+    async def play_and_export(self, right_score, right_beat, left_score, left_beat, filename="piano_output.wav"):
         """同時播放並匯出音樂"""
         await asyncio.gather(
-            self.play_music(),
-            self.export_to_wav(filename)
+            self.play_music(right_score, right_beat, left_score, left_beat),
+            self.export_to_wav(right_score, right_beat, left_score, left_beat, filename)
         )
-
-def load_sheet_music(sheet_name):
-    """動態載入樂譜模組"""
-    try:
-        module = importlib.import_module(f'sheets.{sheet_name}')
-        return (
-            module.tempo,
-            module.right_score,
-            module.right_beat,
-            module.left_score,
-            module.left_beat
-        )
-    except ImportError as e:
-        print(f"錯誤: 無法載入樂譜 '{sheet_name}': {e}")
-        return None
 
 async def main():
-    # 選擇樂譜
-    print("請選擇樂譜:")
-    for num, (sheet_name, display_name) in SHEET_OPTIONS.items():
-        print(f"{num}. {display_name}")
     
-    sheet_choice = input("輸入選擇 (1/2): ")
-    if sheet_choice not in SHEET_OPTIONS:
-        print("無效選擇")
-        return
+    piano_gen = PianoMusicGenerator()
     
-    sheet_name, display_name = SHEET_OPTIONS[sheet_choice]
-    sheet_data = load_sheet_music(sheet_name)
-    if not sheet_data:
-        return
-    
-    tempo, right_score, right_beat, left_score, left_beat = sheet_data
-    piano_gen = PianoMusicGenerator(tempo, right_score, right_beat, left_score, left_beat)
-    
-    # 選擇操作
-    print("\n")
+    # 選擇要執行的操作
     print("請選擇操作:")
     print("1. 僅播放音樂")
     print("2. 僅匯出WAV檔案")
@@ -324,13 +286,13 @@ async def main():
     choice = input("輸入選擇 (1/2/3): ")
     
     if choice == "1":
-        await piano_gen.play_music()
+        await piano_gen.play_music(right_score, right_beat, left_score, left_beat)
     elif choice == "2":
         filename = input("輸入WAV檔案名稱 (例如: output.wav): ")
-        await piano_gen.export_to_wav(filename)
+        await piano_gen.export_to_wav(right_score, right_beat, left_score, left_beat, filename)
     elif choice == "3":
         filename = input("輸入WAV檔案名稱 (例如: output.wav): ")
-        await piano_gen.play_and_export(filename)
+        await piano_gen.play_and_export(right_score, right_beat, left_score, left_beat, filename)
     else:
         print("無效選擇")
 
