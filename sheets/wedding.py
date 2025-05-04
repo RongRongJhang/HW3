@@ -2,10 +2,10 @@
 * Title: Wedding Dress
 * Piano Sheet Source: https://www.sophiesauveterre.com/wedding-dress-by-taeyang/
 * Key: C大調(CDEFGABC)
-* score: 
+* Score: 
   - 音符數字和音符名稱的mapping寫在notes.py
   - 用大括號[]括起來的scores是和弦(chord), 會同時發聲
-* beat: 
+* Beat: 
   0.5: 八分音符(半拍)
     1: 四分音符(一拍)
   1.5: 附點四分音符(一拍半)
