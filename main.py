@@ -6,7 +6,7 @@ import numpy as np
 from scipy.io import wavfile
 import warnings
 from notes import piano_notes, note_to_name
-from sheets.wedding import tempo, right_score, right_beat, left_score, left_beat
+from sheets.river import tempo, right_score, right_beat, left_score, left_beat
 
 # 忽略 WAV 文件非數據塊警告
 warnings.filterwarnings("ignore", category=wavfile.WavFileWarning)
