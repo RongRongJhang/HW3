@@ -25,6 +25,7 @@ class PianoMusicGenerator:
         self.sound_cache = {}
         self.wav_data_cache = {}  # 用於匯出WAV的原始數據
         required_notes = set(self.note_to_name.values())
+        
         for note in required_notes:
             try:
                 # 載入用於播放的音效
@@ -59,7 +60,7 @@ class PianoMusicGenerator:
         self.left_score = left_score
         self.left_beat = left_beat
     
-    def get_piano_sound(self, note_num, hand='right'):
+    def get_piano_sound(self, note_num):
         if note_num == 0:
             return None
         note_name = self.note_to_name.get(note_num)
@@ -68,7 +69,7 @@ class PianoMusicGenerator:
             return None
         return self.sound_cache.get(note_name)
     
-    def get_wav_data(self, note_num, hand='right'):
+    def get_wav_data(self, note_num):
         if note_num == 0:
             return np.zeros((SAMPLE_RATE, 2), dtype=np.int16)
         note_name = self.note_to_name.get(note_num)
@@ -78,7 +79,6 @@ class PianoMusicGenerator:
         return self.wav_data_cache.get(note_name, np.zeros((SAMPLE_RATE, 2), dtype=np.int16))
     
     async def play_hand_part(self, score, beat, hand='right'):
-        """播放單手部分音樂，支援平滑踏板效果"""
         current_measure_beats = 0  # 當前小節的累計節拍
         active_channels = []
         current_time = time.time()  # 記錄當前時間
@@ -106,7 +106,7 @@ class PianoMusicGenerator:
             
             # 播放音符或和弦
             if isinstance(note, list):
-                sounds = [self.get_piano_sound(n, hand) for n in note if n != 0]
+                sounds = [self.get_piano_sound(n) for n in note if n != 0]
                 for sound in sounds:
                     if sound:
                         channel = sound.play(0, int(self.max_duration * 1000))
@@ -114,7 +114,7 @@ class PianoMusicGenerator:
                             channel.set_volume(volume)
                             active_channels.append((channel, current_time))
             else:
-                sound = self.get_piano_sound(note, hand)
+                sound = self.get_piano_sound(note)
                 if sound:
                     channel = sound.play(0, int(self.max_duration * 1000))
                     if channel:
@@ -160,7 +160,7 @@ class PianoMusicGenerator:
             if isinstance(note, list):
                 for n in note:
                     if n != 0:
-                        note_data = self.get_wav_data(n, hand).astype(np.float64)
+                        note_data = self.get_wav_data(n).astype(np.float64)
                         end_pos = min(current_pos + sustain_samples, total_samples)
                         segment_length = end_pos - current_pos
                         
@@ -175,7 +175,7 @@ class PianoMusicGenerator:
                         audio_data[current_pos:end_pos] += segment_data
             else:
                 if note != 0:
-                    note_data = self.get_wav_data(note, hand).astype(np.float64)
+                    note_data = self.get_wav_data(note).astype(np.float64)
                     end_pos = min(current_pos + sustain_samples, total_samples)
                     segment_length = end_pos - current_pos
                     
