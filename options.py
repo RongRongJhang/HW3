@@ -1,5 +1,5 @@
 # 樂譜選項
 SHEET_OPTIONS = {
-    "1": ("wedding", "Wedding Dress"),
-    "2": ("river", "River Flows in You")
+    "1": ("river", "River Flows in You"),
+    "2": ("wedding", "Wedding Dress(一小段範例)")
 }

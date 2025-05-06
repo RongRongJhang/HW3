@@ -9,10 +9,8 @@ from notes import piano_notes, note_to_name
 from options import SHEET_OPTIONS
 import importlib
 
-# 忽略 WAV 文件非數據塊警告
 warnings.filterwarnings("ignore", category=wavfile.WavFileWarning)
 
-# 初始化 Pygame
 pygame.init()
 pygame.mixer.set_num_channels(50)  # 支援多聲道
 FPS = 60
@@ -23,8 +21,7 @@ class PianoMusicGenerator:
         
         self.piano_notes = piano_notes   # 鋼琴音符名稱
         self.note_to_name = note_to_name # 音符數字到音符名稱的映射
-                
-        # 預載音符的 WAV 文件
+
         self.sound_cache = {}
         self.wav_data_cache = {}  # 用於匯出WAV的原始數據
         required_notes = set(self.note_to_name.values())
@@ -52,8 +49,8 @@ class PianoMusicGenerator:
         self.fade_samples = int(0.05 * SAMPLE_RATE)  # 增加到50ms淡入時間
         
         # 音量參數
-        self.right_volume = 0.7  # 降低音量以防止削波
-        self.left_volume = 0.5
+        self.right_volume = 0.7  # 右手音量
+        self.left_volume = 0.5   # 左手音量
         self.max_amplitude = 32767 * 0.7  # 降低最大振幅
         
         # 樂譜數據
@@ -63,7 +60,6 @@ class PianoMusicGenerator:
         self.left_beat = left_beat
     
     def get_piano_sound(self, note_num, hand='right'):
-        """根據數字音符獲取對應的 Pygame 音頻物件"""
         if note_num == 0:
             return None
         note_name = self.note_to_name.get(note_num)
@@ -73,7 +69,6 @@ class PianoMusicGenerator:
         return self.sound_cache.get(note_name)
     
     def get_wav_data(self, note_num, hand='right'):
-        """根據數字音符獲取對應的 WAV 數據"""
         if note_num == 0:
             return np.zeros((SAMPLE_RATE, 2), dtype=np.int16)
         note_name = self.note_to_name.get(note_num)
@@ -85,10 +80,10 @@ class PianoMusicGenerator:
     async def play_hand_part(self, score, beat, hand='right'):
         """播放單手部分音樂，支援平滑踏板效果"""
         current_measure_beats = 0  # 當前小節的累計節拍
-        active_channels = []  # 存儲 (channel, start_time) 元組
+        active_channels = []
         current_time = time.time()  # 記錄當前時間
         
-        # 設置音量
+        # 音量
         volume = self.right_volume if hand == 'right' else self.left_volume
         
         for note, beat_value in zip(score, beat):
@@ -140,8 +135,7 @@ class PianoMusicGenerator:
                 channel.stop()
     
     async def play_music(self):
-        """同時播放右手和左手部分的音樂"""
-        print("正在播放鋼琴合奏版...")
+        print("正在播放...")
         await asyncio.gather(
             self.play_hand_part(self.right_score, self.right_beat, 'right'),
             self.play_hand_part(self.left_score, self.left_beat, 'left')
@@ -178,7 +172,7 @@ class PianoMusicGenerator:
                         if segment_length > self.fade_samples:
                             segment_data[:self.fade_samples] *= fade_in
                         
-                        audio_data[current_pos:end_pos] += segment_data  # 直接疊加，不使用 clip
+                        audio_data[current_pos:end_pos] += segment_data
             else:
                 if note != 0:
                     note_data = self.get_wav_data(note, hand).astype(np.float64)
@@ -204,9 +198,9 @@ class PianoMusicGenerator:
                 if fade_out_samples > 0:
                     audio_data[current_pos-fade_out_samples:current_pos] *= fade_out
         
-        return audio_data  # 移除單獨正規化
+        return audio_data
     
-    async def export_to_wav(self, filename="piano_output.wav"):
+    async def export_to_wav(self, filename):
         print("正在生成WAV檔案...")
         
         if not filename.endswith('.wav'):
@@ -219,9 +213,8 @@ class PianoMusicGenerator:
         right_audio = right_audio[:min_length]
         left_audio = left_audio[:min_length]
         
-        mixed_audio = right_audio + left_audio  # 直接相加
+        mixed_audio = right_audio + left_audio
         
-        # 僅在最終混合後正規化
         max_val = np.max(np.abs(mixed_audio))
         if max_val > 0:
             mixed_audio = (mixed_audio / max_val * self.max_amplitude).astype(np.int16)
@@ -229,15 +222,15 @@ class PianoMusicGenerator:
         wavfile.write(filename, SAMPLE_RATE, mixed_audio)
         print(f"已成功匯出WAV檔案: {filename}")
     
-    async def play_and_export(self, filename="piano_output.wav"):
-        """同時播放並匯出音樂"""
+    async def play_and_export(self, filename):
+        # 同時播放並匯出音樂
         await asyncio.gather(
             self.play_music(),
             self.export_to_wav(filename)
         )
 
 def load_sheet_music(sheet_name):
-    """動態載入樂譜模組"""
+    # 動態載入樂譜模組
     try:
         module = importlib.import_module(f'sheets.{sheet_name}')
         return (
@@ -282,10 +275,10 @@ async def main():
     if choice == "1":
         await piano_gen.play_music()
     elif choice == "2":
-        filename = input("輸入WAV檔案名稱 (例如: output.wav): ")
+        filename = sheet_name
         await piano_gen.export_to_wav(filename)
     elif choice == "3":
-        filename = input("輸入WAV檔案名稱 (例如: output.wav): ")
+        filename = sheet_name
         await piano_gen.play_and_export(filename)
     else:
         print("無效選擇")
