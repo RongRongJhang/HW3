@@ -4,7 +4,7 @@
 * Key: A大調(ABC#DEF#G#A)
 * Score: 
   - 音符數字和音符名稱的mapping寫在notes.py
-  - 用大括號[]括起來的scores是和弦(chord), 會同時發聲
+  - 用大括號[ ]括起來的scores是和聲(harmony)，能夠同時發聲
 * Beat: 
   - 有幾個奇怪的數字是為了演奏裝飾音而設計的(0.03125、0.5625、0.0625、1.125)
   - 其他beat類型: 

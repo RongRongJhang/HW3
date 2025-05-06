@@ -4,7 +4,7 @@
 * Key: C大調(CDEFGABC)
 * Score: 
   - 音符數字和音符名稱的mapping寫在notes.py
-  - 用大括號[]括起來的scores是和弦(chord), 會同時發聲
+  - 用大括號[ ]括起來的scores是和聲(harmony)，能夠同時發聲
 * Beat: 
   0.5: 八分音符(半拍)
     1: 四分音符(一拍)
