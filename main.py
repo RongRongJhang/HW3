@@ -43,7 +43,7 @@ class PianoMusicGenerator:
         
         # 播放參數
         self.tempo = tempo  # 拍子的速度(Beats Per Minute, BPM)
-        self.quarter_duration = 60 / self.tempo  # 四分音符時長（秒）
+        self.quarter_duration = 60 / self.tempo  # 四分音符時長(秒)
         self.measure_duration = 4 * self.quarter_duration  # 小節時長
         self.decay_time = 0.5  # 額外衰減時間
         self.max_duration = self.measure_duration + self.decay_time  # 音符最大播放時長
@@ -79,60 +79,64 @@ class PianoMusicGenerator:
         return self.wav_data_cache.get(note_name, np.zeros((SAMPLE_RATE, 2), dtype=np.int16))
     
     async def play_hand_part(self, score, beat, hand='right'):
-        current_measure_beats = 0  # 當前小節的累計節拍
+        start_time = time.time()
+        next_note_time = 0.0
         active_channels = []
-        current_time = time.time()  # 記錄當前時間
-        
-        # 音量
         volume = self.right_volume if hand == 'right' else self.left_volume
-        
+
         for note, beat_value in zip(score, beat):
-            # 更新當前時間
-            current_time = time.time()
+            duration = self.quarter_duration * beat_value
             
             # 清理過期的聲道
+            current_time = time.time() - start_time
             active_channels = [
                 (ch, st) for ch, st in active_channels
                 if ch.get_busy() and (current_time - st) < self.max_duration
             ]
-            for ch, st in active_channels[:]:
-                if (current_time - st) >= self.max_duration:
-                    ch.stop()
-                    active_channels.remove((ch, st))
             
-            # 計算音符時長
-            duration = self.quarter_duration * beat_value
-            current_measure_beats += beat_value
+            # 等待到下一個音符的時間點
+            while (time.time() - start_time) < next_note_time:
+                await asyncio.sleep(0.001)
             
-            # 播放音符或和弦
+            # 播放音符
+            sounds = []
             if isinstance(note, list):
                 sounds = [self.get_piano_sound(n) for n in note if n != 0]
-                for sound in sounds:
-                    if sound:
-                        channel = sound.play(0, int(self.max_duration * 1000))
-                        if channel:
-                            channel.set_volume(volume)
-                            active_channels.append((channel, current_time))
-            else:
-                sound = self.get_piano_sound(note)
+            elif note != 0:
+                sounds = [self.get_piano_sound(note)]
+                
+            for sound in sounds:
                 if sound:
                     channel = sound.play(0, int(self.max_duration * 1000))
                     if channel:
                         channel.set_volume(volume)
-                        active_channels.append((channel, current_time))
+                        active_channels.append((channel, time.time() - start_time))
             
-            # 檢查小節結束
-            if current_measure_beats >= 4:
-                current_measure_beats -= 4  # 重置小節計數，保留溢出節拍
-            
-            # 等待音符時長
-            await asyncio.sleep(duration)
+            next_note_time += duration
         
-        # 播放結束後，等待最後音符衰減
-        await asyncio.sleep(self.decay_time)
-        for channel, _ in active_channels:
-            if channel.get_busy():
-                channel.stop()
+        # 只停止已經超過最大時長的音符
+        if active_channels:
+            expected_end_time = next_note_time + self.decay_time
+            
+            while True:
+                current_time = time.time() - start_time
+                # 移除已完成播放的聲道
+                active_channels = [
+                    (ch, st) for ch, st in active_channels
+                    if ch.get_busy() and (current_time - st) < expected_end_time
+                ]
+                
+                if not active_channels:
+                    break
+                    
+                # 對最後的音符應用淡出效果
+                for channel, start_t in active_channels:
+                    elapsed = current_time - start_t
+                    remaining = expected_end_time - elapsed
+                    if remaining < 0.5:  # 最後0.5秒開始淡出
+                        channel.set_volume(volume * (remaining / 0.5))
+                
+                await asyncio.sleep(0.05)
     
     async def play_music(self):
         print("正在播放...")
